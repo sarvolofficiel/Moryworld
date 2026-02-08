@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<title>Minecraft Clone</title>
+<title>Minecraft Clone - Fixed Controls</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
@@ -512,10 +512,11 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-// ========== CAMERA : mouvement souris corrigé ==========
+// ========== CAMERA : mouvement souris corrigé (INVERSION ICI) ==========
 document.addEventListener('mousemove', e => {
   if (!gameOn || !document.pointerLockElement) return;
-  player.yaw += e.movementX * 0.002;
+  // J'ai changé += en -= pour que la rotation suive la souris
+  player.yaw -= e.movementX * 0.002;
   player.pitch -= e.movementY * 0.002;
   player.pitch = Math.max(-1.55, Math.min(1.55, player.pitch));
 });
@@ -670,25 +671,24 @@ let fpsCnt = 0, fpsT = 0, fpsVal = 0;
 function update(dt) {
   dt = Math.min(dt, 0.05);
 
-  // ========== TOUCHES CORRIGÉES ==========
-  // Avancer = Z ou W = direction vers laquelle on regarde
-  // Reculer = S = direction opposée
-  // Gauche = Q ou A = perpendiculaire gauche
-  // Droite = D = perpendiculaire droite
-
+  // ========== TOUCHES CORRIGÉES (Z/S INVERSÉS ICI) ==========
+  
   let mx = 0, mz = 0;
 
-  // Vecteur avant (forward) basé sur le yaw
   const fwdX = Math.sin(player.yaw);
   const fwdZ = Math.cos(player.yaw);
-  // Vecteur droite (right) perpendiculaire
   const rightX = Math.cos(player.yaw);
   const rightZ = -Math.sin(player.yaw);
 
-  if (keys['KeyW'] || keys['KeyZ']) { mx += fwdX; mz += fwdZ; }    // Avancer
-  if (keys['KeyS'])                 { mx -= fwdX; mz -= fwdZ; }    // Reculer
-  if (keys['KeyA'] || keys['KeyQ']) { mx -= rightX; mz -= rightZ; } // Gauche
-  if (keys['KeyD'])                 { mx += rightX; mz += rightZ; } // Droite
+  // Z/W doit AVANCER => on SOUSTRAIT le vecteur avant (car la cam regarde vers -Z)
+  if (keys['KeyW'] || keys['KeyZ']) { mx -= fwdX; mz -= fwdZ; }
+  
+  // S doit RECULER => on AJOUTE le vecteur avant
+  if (keys['KeyS'])                 { mx += fwdX; mz += fwdZ; }
+  
+  // Q/D pour strafer (ça reste pareil ou inversé selon le repère, mais là c'est synchro)
+  if (keys['KeyA'] || keys['KeyQ']) { mx -= rightX; mz -= rightZ; }
+  if (keys['KeyD'])                 { mx += rightX; mz += rightZ; }
 
   const len = Math.sqrt(mx*mx + mz*mz);
   if (len > 0) { mx /= len; mz /= len; }
@@ -740,10 +740,9 @@ function render() {
   const asp = canvas.width / canvas.height;
   const proj = m4.perspective(75 * Math.PI / 180, asp, 0.1, 200);
 
-  // ========== VUE CAMÉRA CORRIGÉE ==========
   let view = m4.create();
-  view = m4.rotX(view, -player.pitch);      // Pitch : haut/bas
-  view = m4.rotY(view, -player.yaw);        // Yaw : gauche/droite
+  view = m4.rotX(view, -player.pitch);      
+  view = m4.rotY(view, -player.yaw);        
   view = m4.trans(view, -player.x, -(player.y + player.EYE), -player.z);
 
   const mvp = m4.mul(proj, view);
